@@ -4,6 +4,7 @@
 #
 
 import pytest
+import os
 from datetime import timedelta
 
 from api.cas import casadm
@@ -60,7 +61,7 @@ def test_flush_over_640_gibibytes_with_fs(cache_mode, fs):
         cache.set_seq_cutoff_policy(SeqCutOffPolicy.never)
 
     with TestRun.step("Create test file"):
-        test_file_main = File.create_file("/tmp/test_file_main")
+        test_file_main = File.create_file(os.path.join(mnt_point, "tmp"))
         fio = (
             Fio().create_command()
             .io_engine(IoEngine.libaio)
@@ -78,7 +79,7 @@ def test_flush_over_640_gibibytes_with_fs(cache_mode, fs):
     with TestRun.step("Validate test file and read its md5 sum."):
         if test_file_main.size != file_size:
             TestRun.fail("Created test file hasn't reached its target size.")
-        test_file_md5sum_main = test_file_main.md5sum()
+        test_file_md5sum_main = test_file_main.md5sum(timeouta=timedelta(minutes=600))
 
     with TestRun.step("Write data to exported object."):
         test_file_copy = test_file_main.copy(mnt_point + "test_file_copy")
@@ -99,7 +100,7 @@ def test_flush_over_640_gibibytes_with_fs(cache_mode, fs):
 
     with TestRun.step("Mount core device and check md5 sum of test file copy."):
         core_dev.mount(mnt_point)
-        if test_file_md5sum_main != test_file_copy.md5sum():
+        if test_file_md5sum_main != test_file_main.md5sum(timeouta=timedelta(minutes=600)):
             TestRun.LOGGER.error("Md5 sums should be equal.")
 
     with TestRun.step("Delete test files."):
